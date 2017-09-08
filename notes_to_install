@@ -1,0 +1,50 @@
+> sudo yum update
+> sudo yum install aide
+> sudo vi /etc/aide.conf
+    report_url:mailto:first.last@xxx.xxx
+    ALLEXTRAHASH=sha512+tiger
+> sudo aide -i
+> sudo mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+> sudo aide --check
+> sudo cat /var/log/aide/aidechk.sh << EOF
+#! /bin/sh
+#aidechk.sh - xxxxxx
+NOTIFY="xxxxx@xxx"
+SUBJECT='Daily AIDE report for '$HOSTNAME''
+MYDATE=`date +%Y%m%d`
+MYFILENAME='aide-'$MYDATE'.txt'
+MYSENDFILE='aide-mail-'$MYDATE'.txt'
+/bin/echo $MYFILENAME
+#/bin/echo 'Aide check !! ' $MYDATE > /tmp/$MYFILENAME
+#/usr/sbin/aide --check >> /tmp/myaide.txt
+#/usr/sbin/aide --check #>> /tmp/myaide.txt
+#/bin/echo "***************************************" >> /tmp/$MYFILENAME
+#/bin/echo "***DONE-AIDE-CHECK*********************" >> /tmp/$MYFILENAME
+#
+#AIDE UPDATE
+/bin/echo 'Aide Update !! '  $MYDATE > /tmp/$MYFILENAME
+/usr/sbin/aide --update > /tmp/myaide.txt
+##***UPDATE AIDE DATABASE
+/bin/echo "****************************************" >> /tmp/$MYFILENAME
+mv /var/lib/aide/aide.db.gz /var/lib/aide/aide.db.gz-$MYDATE
+/bin/echo "mv /var/lib/aide/aide.db.gz /var/lib/aide/aide.db.gz"-$MYDATE "- DONE" >> /tmp/$MYFILENAME
+mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+/bin/echo "mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz - DONE" >> /tmp/$MYFILENAME
+/bin/echo "***DONE-AIDE-UPDATE*********************" >> /tmp/$MYFILENAME
+#
+#AIDE CLEANUP OLD FILES
+/bin/echo 'Aide Delete 5 Days Old Files !! '  $MYDATE >> /tmp/$MYFILENAME
+find /var/lib/aide/aide.db.gz-* -mtime +5 -exec rm {} \;
+find /tmp/aide-* -mtime +5 -exec rm {} \;
+/bin/echo "****************************************" >> /tmp/$MYFILENAME
+/bin/echo "***DONE-AIDE-CLEANUP-5-DAYS-OLD-FILES***" >> /tmp/$MYFILENAME
+#
+#CREATE MAIL FILE AND SEND
+/bin/cat /tmp/myaide.txt > /tmp/$MYSENDFILE
+/bin/cat /tmp/$MYFILENAME >> /tmp/$MYSENDFILE
+/bin/mail -s "$SUBJECT $MYFILENAME" $NOTIFY < /tmp/$MYSENDFILE
+
+EOF
+
+> sudo chmod +x /var/log/aide/aidechk.sh
+> sudo crontab -e # make daliy cronjob 
